@@ -2,14 +2,14 @@
 
 #include "Test_FPSGameMode.h"
 #include "Test_FPSHUD.h"
-#include "Test_FPSCharacter.h"
+#include "Player/FirstpersonCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 
 ATest_FPSGameMode::ATest_FPSGameMode()
 	: Super()
 {
 	// set default pawn class to our Blueprinted character
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(TEXT("/Game/FirstPersonCPP/Blueprints/FirstPersonCharacter"));
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(TEXT("/Game/Player/Behavier/FirstPersonCharacter"));
 	DefaultPawnClass = PlayerPawnClassFinder.Class;
 
 	// use our custom HUD class
