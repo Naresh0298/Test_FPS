@@ -1,16 +1,24 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "S05_TestingGrounds.h"
-#include "FirstPersonCharacter.h"
-#include "GameFramework/InputSettings.h"
-#include "../Weapons/Gun.h"
 
+#include "FirstpersonCharacter.h"
+
+
+#include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/InputComponent.h"
+#include "GameFramework/InputSettings.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "MotionControllerComponent.h"
+#include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
+#include "../Weapon/Gun.h"
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
 //////////////////////////////////////////////////////////////////////////
-// AFirstPersonCharacter
+// AFirstpersonCharacter
 
-AFirstPersonCharacter::AFirstPersonCharacter()
+AFirstpersonCharacter::AFirstpersonCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
@@ -41,7 +49,7 @@ AFirstPersonCharacter::AFirstPersonCharacter()
 	// derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
 
-void AFirstPersonCharacter::BeginPlay()
+void AFirstpersonCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
@@ -52,7 +60,7 @@ void AFirstPersonCharacter::BeginPlay()
 	}
 	Gun = GetWorld()->SpawnActor<AGun>(GunBlueprint);
 	Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint")); //Attach gun mesh component to Skeleton, doing it here because the skelton is not yet created in the constructor
-	Gun->AnimInstance = Mesh1P->GetAnimInstance();
+	Gun->AnimInstance1P = Mesh1P->GetAnimInstance();
 	if (EnableTouchscreenMovement(InputComponent) == false)
 	{
 		InputComponent->BindAction("Fire", IE_Pressed, Gun, &AGun::OnFire);
@@ -62,7 +70,7 @@ void AFirstPersonCharacter::BeginPlay()
 //////////////////////////////////////////////////////////////////////////
 // Input
 
-void AFirstPersonCharacter::SetupPlayerInputComponent(class UInputComponent* InputComponent)
+void AFirstpersonCharacter::SetupPlayerInputComponent(class UInputComponent* InputComponent)
 {
 	// set up gameplay key bindings
 	check(InputComponent);
@@ -70,22 +78,22 @@ void AFirstPersonCharacter::SetupPlayerInputComponent(class UInputComponent* Inp
 	InputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	InputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	//InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstPersonCharacter::TouchStarted);
-	InputComponent->BindAxis("MoveForward", this, &AFirstPersonCharacter::MoveForward);
-	InputComponent->BindAxis("MoveRight", this, &AFirstPersonCharacter::MoveRight);
+	//InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstpersonCharacter::TouchStarted);
+	InputComponent->BindAxis("MoveForward", this, &AFirstpersonCharacter::MoveForward);
+	InputComponent->BindAxis("MoveRight", this, &AFirstpersonCharacter::MoveRight);
 
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "turn" handles devices that provide an absolute delta, such as a mouse.
 	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
 	InputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	InputComponent->BindAxis("TurnRate", this, &AFirstPersonCharacter::TurnAtRate);
+	InputComponent->BindAxis("TurnRate", this, &AFirstpersonCharacter::TurnAtRate);
 	InputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-	InputComponent->BindAxis("LookUpRate", this, &AFirstPersonCharacter::LookUpAtRate);
+	InputComponent->BindAxis("LookUpRate", this, &AFirstpersonCharacter::LookUpAtRate);
 }
 
 
 
-void AFirstPersonCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
+void AFirstpersonCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
 	if (TouchItem.bIsPressed == true)
 	{
@@ -97,7 +105,7 @@ void AFirstPersonCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, cons
 	TouchItem.bMoved = false;
 }
 
-void AFirstPersonCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
+void AFirstpersonCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
 	if (TouchItem.bIsPressed == false)
 	{
@@ -110,7 +118,7 @@ void AFirstPersonCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const 
 	TouchItem.bIsPressed = false;
 }
 
-void AFirstPersonCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location)
+void AFirstpersonCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
 	if ((TouchItem.bIsPressed == true) && (TouchItem.FingerIndex == FingerIndex))
 	{
@@ -145,7 +153,7 @@ void AFirstPersonCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, con
 	}
 }
 
-void AFirstPersonCharacter::MoveForward(float Value)
+void AFirstpersonCharacter::MoveForward(float Value)
 {
 	if (Value != 0.0f)
 	{
@@ -154,7 +162,7 @@ void AFirstPersonCharacter::MoveForward(float Value)
 	}
 }
 
-void AFirstPersonCharacter::MoveRight(float Value)
+void AFirstpersonCharacter::MoveRight(float Value)
 {
 	if (Value != 0.0f)
 	{
@@ -163,27 +171,27 @@ void AFirstPersonCharacter::MoveRight(float Value)
 	}
 }
 
-void AFirstPersonCharacter::TurnAtRate(float Rate)
+void AFirstpersonCharacter::TurnAtRate(float Rate)
 {
 	// calculate delta for this frame from the rate information
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
-void AFirstPersonCharacter::LookUpAtRate(float Rate)
+void AFirstpersonCharacter::LookUpAtRate(float Rate)
 {
 	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-bool AFirstPersonCharacter::EnableTouchscreenMovement(class UInputComponent* InputComponent)
+bool AFirstpersonCharacter::EnableTouchscreenMovement(class UInputComponent* InputComponent)
 {
 	bool bResult = false;
 	if (FPlatformMisc::GetUseVirtualJoysticks() || GetDefault<UInputSettings>()->bUseMouseForTouch)
 	{
 		bResult = true;
-		InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstPersonCharacter::BeginTouch);
-		InputComponent->BindTouch(EInputEvent::IE_Released, this, &AFirstPersonCharacter::EndTouch);
-		InputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AFirstPersonCharacter::TouchUpdate);
+		InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstpersonCharacter::BeginTouch);
+		InputComponent->BindTouch(EInputEvent::IE_Released, this, &AFirstpersonCharacter::EndTouch);
+		InputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AFirstpersonCharacter::TouchUpdate);
 	}
 	return bResult;
 }
